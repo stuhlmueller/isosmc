@@ -43,7 +43,7 @@ var isoFactor = function(score){
 
 var IsoSMC = function(model, settings){
   globalStore.iters = settings.iters;
-  globalStore.epsilon = settings.epsilon;
+  globalStore.epsilon = settings.epsilon || 0.0001;
   var loop = function(i, value){
     globalStore.iter = i;        
     if (i > settings.iters){

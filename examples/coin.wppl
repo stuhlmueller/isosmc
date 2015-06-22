@@ -1,3 +1,6 @@
+// This example runs the program for 1 iteration, so only
+// serves as a trivial test case of isosmc.
+
 var makeCoin = function(p){
   return Enumerate(function(){return flip(p);});
 };
@@ -12,10 +15,9 @@ var model = function(){
 };
 
 var smcERP = IsoSMC(model, {
-  iters: 3, // run program three times
+  iters: 1,
   numParticles: 5000,
-  rejuvSteps: 10,
-  epsilon: 0.0001
+  rejuvSteps: 10
 });
 
 var enumerateERP = Enumerate(model);
