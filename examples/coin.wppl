@@ -1,0 +1,26 @@
+var makeCoin = function(p){
+  return Enumerate(function(){return flip(p);});
+};
+
+var FairCoin = makeCoin(.5);
+
+var model = function(){
+  var x = sample(FairCoin);
+  var y = sample(withImportanceDist(FairCoin, makeCoin(x ? .4 : .8)));
+  isoFactor((x != y) ? 0 : -2);
+  return [x, y];
+};
+
+var smcERP = IsoSMC(model, {
+  iters: 3, // run program three times
+  numParticles: 5000,
+  rejuvSteps: 10,
+  epsilon: 0.0001
+});
+
+var enumerateERP = Enumerate(model);
+
+console.log('isoSMC:');
+printERP(smcERP);
+console.log('\nenumerate:');
+printERP(enumerateERP);
