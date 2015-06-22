@@ -43,7 +43,22 @@ function getAddress(s, k, a){
   return k(s, a);
 }
 
+// construct importance erp with same distribution type as original erp
+function withImportanceParams(s, k, a, erp, importanceParams){
+  var newERP = _.clone(erp);
+  var importanceERP = _.clone(erp);
+  importanceERP.sample = function(params){
+    return erp.sample(params);
+  };
+  importanceERP.score = function(params, val){
+    return erp.score(importanceParams, val);
+  };
+  newERP.importanceERP = importanceERP;
+  return k(s, newERP);
+}
+
 module.exports = {
   getAddress: getAddress,
-  relativizeAddress: relativizeAddress
+  relativizeAddress: relativizeAddress,
+  withImportanceParams: withImportanceParams
 };

@@ -26,22 +26,41 @@ var name = function(relativeAddress, iter){
 // Score on previous level is heuristic, subtracted out on current level.
 // We replace p=0 scores with p=epsilon (because we can't cancel p=0 later).
 var isoFactor = function(score){
-  if (!globalStore.iters){
+  if (!globalStore.iso){
     // Not running isoSMC - just treat as normal factor
-    return factor(score);
+    factor(score);
+  } else {
+    var relativeAddress = getRelativeAddress();
+    var prevName = name(relativeAddress, globalStore.iter-1);
+    var thisName = name(relativeAddress, globalStore.iter);
+    var prevScore = globalStore[prevName] || 0;
+    var thisScore = (((globalStore.iter < globalStore.iters) && (score === -Infinity)) ?
+                     Math.log(globalStore.epsilon) :
+                     score);
+    globalStore[thisName] = thisScore;
+    factor(thisScore - prevScore);
   }
-  var relativeAddress = getRelativeAddress();
-  var prevName = name(relativeAddress, globalStore.iter-1);
-  var thisName = name(relativeAddress, globalStore.iter);
-  var prevScore = (prevName && globalStore[prevName]) || 0;
-  var thisScore = (((globalStore.iter < globalStore.iters) && (score === -Infinity)) ?
-                   Math.log(globalStore.epsilon) :
-                   score);
-  globalStore[thisName] = thisScore;
-  factor(thisScore - prevScore);
 };
 
+// getParams is called with erp value on previous level (if any)
+var isoSample = function(erp, params, getImportanceParams){
+  if (!globalStore.iso){
+    // Not running isoSMC - just treat as normal erp
+    return sample(erp, params);
+  } else {
+    var relativeAddress = getRelativeAddress();
+    var prevName = name(relativeAddress, globalStore.iter-1);
+    var thisName = name(relativeAddress, globalStore.iter);
+    var prevValue = globalStore[prevName] !== undefined ? globalStore[prevName] : undefined;
+    var newERP = withImportanceParams(erp, getImportanceParams(prevValue));
+    var thisValue = sample(newERP, params);
+    globalStore[thisName] = thisValue;
+    return thisValue;
+  }
+}
+
 var IsoSMC = function(model, settings){
+  globalStore.iso = true
   globalStore.iters = settings.iters;
   globalStore.epsilon = settings.epsilon || 0.0001;
   var loop = function(i, value){
@@ -50,7 +69,7 @@ var IsoSMC = function(model, settings){
       return value;
     } else {
       // console.log('Iter ', i, '/', settings.iters);      
-      globalStore['base_' + i] = getAddress();      
+      globalStore['base_' + i] = getAddress();
       var value = model();
       return loop(i + 1, value);
     }
@@ -59,6 +78,7 @@ var IsoSMC = function(model, settings){
     function(){return loop(1);},
     settings.numParticles,
     settings.rejuvSteps);
+  globalStore.iso = false;
   globalStore.iters = undefined;
   globalStore.epsilon = undefined;
   return marginal;

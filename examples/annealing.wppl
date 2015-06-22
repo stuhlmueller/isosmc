@@ -1,0 +1,49 @@
+// work in progress
+
+var isingLength = 20;
+var nonMatchCost = Math.log(0.01);
+
+var iterations = 3;
+
+var getImportanceParams = function(prevVal){
+  if (prevVal === undefined){
+    return [.5];
+  } else {
+    return [prevVal ? .9 : .1];
+  }
+};
+
+var model = function(){
+  var xs = repeat(
+    isingLength,
+    function(){
+      return isoSample(bernoulliERP, [0.5], getImportanceParams);
+    });
+  var score = sum(map2(
+    function(x, y){
+      return (x === y) ? 0 : nonMatchCost;
+    },
+    xs, xs.slice(1)));
+  var alpha = globalStore.iso ? (iterations - globalStore.iter + 1) : 1;  // annealing parameter
+  isoFactor(score / alpha);
+  return xs.slice(isingLength - 4);
+};
+
+var smcERP = ParticleFilterRejuv(model, 1000, 100);
+
+// var isosmcERP = IsoSMC(model, {
+//   iters: iterations,
+//   numParticles: 1000,
+//   rejuvSteps: 0
+// });
+
+// var enumerateERP = Enumerate(model);
+
+console.log('SMC:');
+printERP(smcERP);
+
+// console.log('isoSMC:');
+// printERP(isosmcERP);
+
+// console.log('\nenumerate:');
+// printERP(enumerateERP);

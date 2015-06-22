@@ -5,11 +5,11 @@ var makeCoin = function(p){
   return Enumerate(function(){return flip(p);});
 };
 
-var FairCoin = makeCoin(.5);
+var fairCoin = makeCoin(.5);
 
 var model = function(){
-  var x = sample(FairCoin);
-  var y = sample(withImportanceDist(FairCoin, makeCoin(x ? .4 : .8)));
+  var x = sample(fairCoin);
+  var y = sample(withImportanceDist(fairCoin, makeCoin(x ? .4 : .8)));
   isoFactor((x != y) ? 0 : -2);
   return [x, y];
 };
