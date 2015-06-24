@@ -1,0 +1,17 @@
+// x = erp with support 0...N
+
+var hierarchicalERP = multiplexERP(
+  [undefined, 0, 1],
+  map(makeCategorical, [[.5, .5], [.2, .3, 0, 0], [0, 0, .1, .4]])
+);
+
+var model = function(){
+  var x = isoSample(hierarchicalERP);
+  return x;
+};
+
+console.log('\nisoEnumerate:');
+printERP(IsoEnumerate(model, {iters: 2}));
+
+console.log('\nisoSMC:');
+printERP(IsoSMC(model, {iters: 2, numParticles: 100, rejuvSteps: 10}));
