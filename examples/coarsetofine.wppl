@@ -1,17 +1,78 @@
-// x = erp with support 0...N
+// --------------------------------------------------------------------
+// 1) No factors, no dependent ERPs:
 
-var hierarchicalERP = multiplexERP(
-  [undefined, 0, 1],
-  map(makeCategorical, [[.5, .5], [.2, .3, 0, 0], [0, 0, .1, .4]])
-);
+var example1 = function(){
+  
+  var hierarchicalERP = multiplexERP(
+    [undefined, 0, 1],
+    map(makeCategorical, [[.7, .3], [.2, .5, 0, 0], [0, 0, .1, .2]])
+  );
 
-var model = function(){
-  var x = isoSample(hierarchicalERP);
-  return x;
+  var model = function(){
+    var x = isoSample(hierarchicalERP);
+    return x;
+  };
+
+  console.log('\nisoEnumerate:');
+  printERP(IsoEnumerate(model, {iters: 2}));
+
+  console.log('\nisoSMC:');
+  printERP(IsoSMC(model, {iters: 2, numParticles: 200, rejuvSteps: 10}));
+
 };
 
-console.log('\nisoEnumerate:');
-printERP(IsoEnumerate(model, {iters: 2}));
+// example1();
 
-console.log('\nisoSMC:');
-printERP(IsoSMC(model, {iters: 2, numParticles: 100, rejuvSteps: 10}));
+
+// --------------------------------------------------------------------
+// 2) Factors, no dependent ERPs:
+
+var example2 = function(){
+
+  var hierarchicalERP = multiplexERP(
+    [undefined, 0, 1],
+    map(makeCategorical, [[.7, .3], [.2, .5, 0, 0], [0, 0, .1, .2]])
+  );
+
+  var hierarchicalScore = function(x){
+    if (globalStore.iter === 2){
+      // heuristic score
+      return -x*2;
+    } else {
+      // actual score
+      return -x;
+    }
+  }
+
+  var model = function(){
+    var x = isoSample(hierarchicalERP);
+    isoFactor(hierarchicalScore(x));
+    return x;
+  };
+
+  console.log('\nisoEnumerate:');
+  printERP(IsoEnumerate(model, {iters: 2}));
+
+  console.log('\nisoSMC:');
+  printERP(IsoSMC(model, {iters: 2, numParticles: 200, rejuvSteps: 10}));
+
+};  
+
+example2();
+
+
+// for comparison, the distribution we should get:
+
+var example2_truth = function(){
+
+  var myERP = makeCategorical([.2, .5, .1, .2]);
+
+  console.log('\nEnumerate:');  
+  printERP(Enumerate(function(){
+    var x = sample(myERP);
+    factor(-x);
+    return x;
+  }));
+}
+
+example2_truth();
