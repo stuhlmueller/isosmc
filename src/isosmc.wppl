@@ -1,3 +1,5 @@
+// Helpers
+
 var printERP = function(x) {
   var erpValues = sort(x.support(), undefined, function(v){return -x.score([], v);});
   map(
@@ -9,6 +11,24 @@ var printERP = function(x) {
     },
     erpValues);
 };
+
+var range = function(i){
+  if (i == 0){
+    return []
+  } else {
+    return range(i-1).concat([i-1])
+  }
+}
+
+var makeCategorical = function(ps, vs){
+  var vs = (vs === undefined) ? range(ps.length) : vs;
+  return Enumerate(function(){
+    return categorical(ps, vs);
+  }); 
+}
+
+
+// --------------------------------------------------------------------
 
 // Returns address relative to base address in global store
 var getRelativeAddress = function(){
@@ -42,8 +62,26 @@ var isoFactor = function(score){
   }
 };
 
-// getParams is called with erp value on previous level (if any)
-var isoSample = function(erp, params, getImportanceParams){
+// partialParams: [param-1, param-2, ...]
+// erp params: [prevVal, other-param-1, other-param-2, ...]    
+var isoSample = function(erp, partialParams){
+  if (!globalStore.iso){
+    // Not running isoSMC - just treat as normal erp
+    return sample(erp, params);
+  } else {
+    var relativeAddress = getRelativeAddress();
+    var prevName = name(relativeAddress, globalStore.iter-1);
+    var thisName = name(relativeAddress, globalStore.iter);
+    var prevValue = globalStore[prevName] !== undefined ? globalStore[prevName] : undefined;    
+    var params = [prevValue].concat(partialParams);
+    var thisValue = sample(erp, params);
+    globalStore[thisName] = thisValue;
+    return thisValue;    
+  }
+};
+
+// getImportanceParams is called with erp value on previous level (if any)
+var isoImportanceSample = function(erp, params, getImportanceParams){
   if (!globalStore.iso){
     // Not running isoSMC - just treat as normal erp
     return sample(erp, params);
@@ -57,29 +95,47 @@ var isoSample = function(erp, params, getImportanceParams){
     globalStore[thisName] = thisValue;
     return thisValue;
   }
-}
+};
 
-var IsoSMC = function(model, settings){
+var IsoInfer = function(model, settings, infer){
   globalStore.iso = true
-  globalStore.iters = settings.iters;
+  globalStore.iters = settings.iters;  
   globalStore.epsilon = settings.epsilon || 0.0001;
+  var stopAfterIter = settings.stopAfterIter || settings.iters;
   var loop = function(i, value){
     globalStore.iter = i;        
-    if (i > settings.iters){
+    if (i > stopAfterIter){
       return value;
     } else {
       // console.log('Iter ', i, '/', settings.iters);      
       globalStore['base_' + i] = getAddress();
+      setRegenStart();
       var value = model();
       return loop(i + 1, value);
     }
   };  
-  var marginal = ParticleFilterRejuv(
-    function(){return loop(1);},
-    settings.numParticles,
-    settings.rejuvSteps);
+  var marginal = infer(function(){return loop(1);});
   globalStore.iso = false;
   globalStore.iters = undefined;
   globalStore.epsilon = undefined;
-  return marginal;
+  return marginal;  
+}
+
+var IsoSMC = function(model, settings){
+  return IsoInfer(
+    model,
+    settings,
+    function(model){
+      return ParticleFilterRejuv(model, settings.numParticles, settings.rejuvSteps);
+    });
+};
+
+// for debugging
+var IsoEnumerate = function(model, settings){
+  return IsoInfer(
+    model,
+    settings,
+    function(model){
+      return Enumerate(model);
+    });
 };

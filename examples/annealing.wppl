@@ -1,15 +1,16 @@
-// work in progress
+// work in progress -- annealing doesn't actually help in current version
 
-var isingLength = 20;
+var isingLength = 10;
 var nonMatchCost = Math.log(0.01);
 
 var iterations = 3;
+var stopAfterIter = iterations;
 
 var getImportanceParams = function(prevVal){
   if (prevVal === undefined){
     return [.5];
   } else {
-    return [prevVal ? .9 : .1];
+    return [prevVal ? .5 : .5];
   }
 };
 
@@ -17,7 +18,7 @@ var model = function(){
   var xs = repeat(
     isingLength,
     function(){
-      return isoSample(bernoulliERP, [0.5], getImportanceParams);
+      return isoImportanceSample(bernoulliERP, [0.5], getImportanceParams);
     });
   var score = sum(map2(
     function(x, y){
@@ -26,24 +27,26 @@ var model = function(){
     xs, xs.slice(1)));
   var alpha = globalStore.iso ? (iterations - globalStore.iter + 1) : 1;  // annealing parameter
   isoFactor(score / alpha);
-  return xs.slice(isingLength - 4);
+  return sum(xs);
 };
 
-var smcERP = ParticleFilterRejuv(model, 1000, 100);
-
-// var isosmcERP = IsoSMC(model, {
-//   iters: iterations,
-//   numParticles: 1000,
-//   rejuvSteps: 0
-// });
-
-// var enumerateERP = Enumerate(model);
-
-console.log('SMC:');
-printERP(smcERP);
-
-// console.log('isoSMC:');
-// printERP(isosmcERP);
+// console.log('\niso-enumerate:');
+// var isoEnumerateERP = IsoEnumerate(model, { iters: iterations, stopAfterIter: stopAfterIter });
+// printERP(isoEnumerateERP);
 
 // console.log('\nenumerate:');
+// var enumerateERP = Enumerate(model);
 // printERP(enumerateERP);
+
+console.log('\nSMC:');
+var smcERP = ParticleFilterRejuv(model, 100, 100);
+printERP(smcERP);
+
+console.log('\nisoSMC:');
+var isosmcERP = IsoSMC(model, {
+  iters: iterations,
+  numParticles: 100,
+  rejuvSteps: 100,
+  stopAfterIter: stopAfterIter
+});
+printERP(isosmcERP);
