@@ -1,0 +1,11 @@
+language: node_js
+
+node_js:
+  - "0.12"
+
+install:
+  - npm install -g nodeunit grunt-cli webppl
+
+script:
+  - webppl examples/trivial.wppl --require-header src/header.js --require-wppl src/isosmc.wppl
+  - webppl examples/coarsetofine.wppl --require-header src/header.js --require-wppl src/isosmc.wppl
