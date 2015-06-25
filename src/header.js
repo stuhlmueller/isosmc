@@ -48,7 +48,7 @@ function withImportanceParams(s, k, a, erp, importanceParams){
   var newERP = _.clone(erp);
   var importanceERP = _.clone(erp);
   importanceERP.sample = function(params){
-    return erp.sample(params);
+    return erp.sample(importanceParams);
   };
   importanceERP.score = function(params, val){
     return erp.score(importanceParams, val);
