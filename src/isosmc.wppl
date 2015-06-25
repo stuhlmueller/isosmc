@@ -107,7 +107,7 @@ var IsoInfer = function(model, settings, infer){
     } else {
       // console.log('Iter ', i, '/', settings.iters);      
       globalStore['base_' + i] = getAddress();
-      setRegenStart();
+      setProposalBoundary();
       var value = model();
       return loop(i + 1, value);
     }
