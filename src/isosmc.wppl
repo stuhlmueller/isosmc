@@ -62,18 +62,16 @@ var isoFactor = function(score){
   }
 };
 
-// partialParams: [param-1, param-2, ...]
-// erp params: [prevVal, other-param-1, other-param-2, ...]    
-var isoSample = function(erp, partialParams){
+var isoSample = function(getERP, params){
   if (!globalStore.iso){
     // Not running isoSMC - just treat as normal erp
-    return sample(erp, params);
+    return sample(getERP(), params);
   } else {
     var relativeAddress = getRelativeAddress();
     var prevName = name(relativeAddress, globalStore.iter-1);
     var thisName = name(relativeAddress, globalStore.iter);
-    var prevValue = globalStore[prevName] !== undefined ? globalStore[prevName] : undefined;    
-    var params = [prevValue].concat(partialParams);
+    var prevValue = globalStore[prevName] !== undefined ? globalStore[prevName] : undefined;
+    var erp = getERP(prevValue);
     var thisValue = sample(erp, params);
     globalStore[thisName] = thisValue;
     return thisValue;    

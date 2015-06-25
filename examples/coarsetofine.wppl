@@ -2,14 +2,24 @@
 // 1) No factors, no dependent ERPs:
 
 var example1 = function(){
-  
-  var hierarchicalERP = multiplexERP(
-    [undefined, 0, 1],
-    map(makeCategorical, [[.7, .3], [.2, .5, 0, 0], [0, 0, .1, .2]])
-  );
+
+  var X0 = makeCategorical([.7, .3]);  // coarse
+  var X1 = makeCategorical([.2, .5, .1, .2]);  // fine (original)
+
+  var getX = function(prevVal){
+    if (prevVal === undefined){
+      assert.equal(globalStore.iter, 1);
+      return X0;
+    } else {
+      assert.equal(globalStore.iter, 2);
+      return withImportanceParams(
+        X1,
+        (prevVal === 0) ? [.2, .5, 0, 0] : [0, 0, .1, .2]);
+    }
+  };
 
   var model = function(){
-    var x = isoSample(hierarchicalERP);
+    var x = isoSample(getX);
     return x;
   };
 
@@ -17,11 +27,26 @@ var example1 = function(){
   printERP(IsoEnumerate(model, {iters: 2}));
 
   console.log('\nisoSMC:');
-  printERP(IsoSMC(model, {iters: 2, numParticles: 200, rejuvSteps: 10}));
+  printERP(IsoSMC(model, {iters: 2, numParticles: 1000, rejuvSteps: 10}));
+
+  console.log('\nisoSMC (pf):');
+  printERP(IsoSMC(model, {iters: 2, numParticles: 1000, rejuvSteps: 0}));  
 
 };
 
+var example1_truth = function(){
+
+  var X = makeCategorical([.2, .5, .1, .2]);
+
+  console.log('\nEnumerate:');  
+  printERP(Enumerate(function(){
+    return sample(X);
+  }));
+}
+
 // example1();
+// example1_truth();
+
 
 
 // --------------------------------------------------------------------
@@ -29,13 +54,23 @@ var example1 = function(){
 
 var example2 = function(){
 
-  var hierarchicalERP = multiplexERP(
-    [undefined, 0, 1],
-    map(makeCategorical, [[.7, .3], [.2, .5, 0, 0], [0, 0, .1, .2]])
-  );
+  var X0 = makeCategorical([.7, .3]);  // coarse
+  var X1 = makeCategorical([.2, .5, .1, .2]);  // fine (original)
 
+  var getX = function(prevVal){
+    if (prevVal === undefined){
+      assert.equal(globalStore.iter, 1);
+      return X0;
+    } else {
+      assert.equal(globalStore.iter, 2);
+      return withImportanceParams(
+        X1,
+        (prevVal === 0) ? [.2, .5, 0, 0] : [0, 0, .1, .2]);
+    }
+  };
+  
   var hierarchicalScore = function(x){
-    if (globalStore.iter === 2){
+    if (globalStore.iter === 1){
       // heuristic score
       return -x*2;
     } else {
@@ -45,7 +80,7 @@ var example2 = function(){
   }
 
   var model = function(){
-    var x = isoSample(hierarchicalERP);
+    var x = isoSample(getX);
     isoFactor(hierarchicalScore(x));
     return x;
   };
@@ -58,21 +93,159 @@ var example2 = function(){
 
 };  
 
-example2();
-
-
 // for comparison, the distribution we should get:
-
 var example2_truth = function(){
 
-  var myERP = makeCategorical([.2, .5, .1, .2]);
+  var X = makeCategorical([.2, .5, .1, .2]);
 
   console.log('\nEnumerate:');  
   printERP(Enumerate(function(){
-    var x = sample(myERP);
+    var x = sample(X);
     factor(-x);
     return x;
   }));
 }
 
-example2_truth();
+// example2();
+// example2_truth();
+
+
+
+// --------------------------------------------------------------------
+// 3) Factors, dependent ERPs
+
+
+// fine:
+
+// () -> [0..5]
+var X = makeCategorical([.3, .2, .3, .05, .05, .1]);
+
+// [0..5] -> [0..5]
+var Z = multiplexERP(
+  [0, 1, 2, 3, 4, 5],
+  map(makeCategorical, 
+      [[.60, .15, .10, .05, .05, .05],
+       [.05, .60, .15, .10, .05, .05],
+       [.05, .05, .60, .15, .10, .05],
+       [.05, .05, .05, .60, .15, .10],
+       [.05, .05, .05, .10, .60, .15],
+       [.15, .05, .05, .05, .10, .60]])
+);
+
+// Primitive function
+
+// [0..5] -> [0..5]
+var f = function(x){
+  return {
+    0: 1,
+    1: 2,
+    2: 3,
+    3: 4,
+    4: 5,
+    5: 0
+  }[x];
+}
+
+
+// coarse:
+
+var X1 = makeCategorical([.3 + .2 + .3, .05 + .05 + .1]);
+
+var getX = function(prevVal){
+  if (prevVal === undefined){
+    assert.equal(globalStore.iter, 1);
+    return X1;
+  } else {
+    assert.equal(globalStore.iter, 2);
+    return withImportanceParams(
+      X,
+      (prevVal === 0) ? [.3, .2, .3, .0, .0, .0] : [.0, .0, .0, .05, .05, .1]);
+  }
+};
+
+var cf = function(x){
+  if (globalStore.iter === 1){
+    var fERP = multiplexERP(
+      [0, 1],
+      map(makeCategorical,
+          [[5/6, 1/6],     // <- can be anything
+           [1/7, 6/7]]));  // <- can be anything
+    return sample(fERP, [x]);
+  } else {
+    return f(x);
+  }
+};
+
+var CZ = multiplexERP(
+  [0, 1],
+  map(makeCategorical, 
+      [[(.60 + .15 + .10)/3 + (.05 + .60 + .15)/3 + (.05 + .05 + .60)/3,
+        (.05 + .05 + .05)/3 + (.10 + .05 + .05)/3 + (.15 + .10 + .05)/3],  // p(012|012), p(345|012)
+       [(.05 + .05 + .05)/3 + (.05 + .05 + .05)/3 + (.15 + .05 + .05)/3,
+        (.60 + .15 + .10)/3 + (.10 + .60 + .15)/3 + (.05 + .10 + .60)/3]]) // p(012|345), p(345|345)
+);
+
+// [0..5] -> [0..5]; also depends on on 012/345
+var FZ012 = multiplexERP(
+  [0, 1, 2, 3, 4, 5],
+  map(makeCategorical, 
+      [[.60, .15, .10, 0, 0, 0],
+       [.05, .60, .15, 0, 0, 0],
+       [.05, .05, .60, 0, 0, 0],
+       [.05, .05, .05, 0, 0, 0],
+       [.05, .05, .05, 0, 0, 0],
+       [.15, .05, .05, 0, 0, 0]])
+);
+var FZ345 = multiplexERP(
+  [0, 1, 2, 3, 4, 5],
+  map(makeCategorical, 
+      [[0, 0, 0, .05, .05, .05],
+       [0, 0, 0, .10, .05, .05],
+       [0, 0, 0, .15, .10, .05],
+       [0, 0, 0, .60, .15, .10],
+       [0, 0, 0, .10, .60, .15],
+       [0, 0, 0, .05, .10, .60]])
+);
+
+var getZ = function(prevVal){
+  if (prevVal === undefined){
+    assert.equal(globalStore.iter, 1);
+    return CZ;
+  } else {
+    assert.equal(globalStore.iter, 2);
+    // need to combine influence of prevVal with influence of params
+    return withImportanceParams(
+      Z, 
+      (prevVal === 0) ? FZ012 : FZ345);
+  }
+}
+
+
+var example3 = function(){
+  var model = function(){
+    var x = isoSample(getX);
+    var y = cf(x);
+    var z = isoSample(getZ, [y]);
+    return z
+  };
+  console.log('\nisoEnumerate');
+  printERP(IsoEnumerate(model, {iters: 2}));
+  console.log('\nisoSMC');
+  printERP(IsoSMC(model, {iters: 2, numParticles: 2000, rejuvSteps: 0}));
+};
+
+
+var example3_truth = function(){
+  var model = function(){
+    var x = sample(X);
+    var y = f(x);
+    var z = sample(Z, [y]);
+    return z;
+  }
+  console.log('\nenumerate');
+  printERP(Enumerate(model)); 
+};
+
+
+example3_truth();
+example3();
