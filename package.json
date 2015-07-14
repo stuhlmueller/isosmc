@@ -1,10 +1,23 @@
 {
-  "name": "isosmc",
+  "name": "webppl-isosmc",
   "version": "0.0.1",
-  "description": "",
+  "description": "WebPPL library for specifying sequences of programs for SMC",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stuhlmueller/isosmc.git"
+  },
   "author": "Andreas Stuhlmueller",
   "license": "MIT",
-  "dependencies": {
-    "webppl": "*"    
-  }
+  "bugs": {
+    "url": "https://github.com/stuhlmueller/isosmc/issues"
+  },
+  "webppl": {
+    "headers": ["src/header.js"],
+    "wppl": ["src/isosmc.wppl"]
+  },
+  "homepage": "https://github.com/stuhlmueller/isosmc"
 }
