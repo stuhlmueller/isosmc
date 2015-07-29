@@ -13,7 +13,7 @@ module.exports = function(env){
   };
 
   function parseAddress(address){
-    // address starts with '_', so slice of first element
+    // address starts with '_', so slice off first element
     var addressArray = address.split("_").slice(1);
     for (var i=0; i<addressArray.length; i++){
       addressArray[i] = parseInt(addressArray[i], 10);
